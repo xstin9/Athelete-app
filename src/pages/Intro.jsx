@@ -54,10 +54,10 @@ function Intro({ sessions = [] }) {
       </header>
 
       {/* HERO */}
-      <main className="max-w-6xl mx-auto px-6 py-12">
+      <main>
         {/* HERO IMAGE - AT TOP */}
    {/* HERO IMAGE BACKDROP */}
-<section className="relative w-full h-[80vh] mb-24 flex items-center">
+<section className="relative w-full h-[90vh] mb-24 flex items-center">
   <img
     src={athleteImage}
     alt="Athlete training"
@@ -90,20 +90,16 @@ function Intro({ sessions = [] }) {
   </div>
 </section>
 
+<div className="max-w-6xl mx-auto px-6 py-12">
+  {/* everything after the hero section */}
+  </div>
+
 <section className="grid md:grid-cols-2 gap-14 items-center">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-4xl md:text-6xl font-extrabold leading-tight text-black dark:text-white">
-              Track every session.
-              <br />
-              <span className="text-orange-500">
-                See exactly why you’re getting faster.
-              </span>
-            </h1>
-
             <p className="mt-6 text-gray-600 dark:text-gray-400 text-lg max-w-xl">
               Log sprint sessions, hurdle steps, volumes, and notes — then
               visualize progress over weeks and months. No guesswork. Just data.
