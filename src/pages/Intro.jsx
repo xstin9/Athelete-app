@@ -56,20 +56,41 @@ function Intro({ sessions = [] }) {
       {/* HERO */}
       <main className="max-w-6xl mx-auto px-6 py-12">
         {/* HERO IMAGE - AT TOP */}
-       {/* HERO IMAGE BACKDROP */}
-<section className="relative w-full h-[80vh] mb-24">
+   {/* HERO IMAGE BACKDROP */}
+<section className="relative w-full h-[80vh] mb-24 flex items-center">
   <img
     src={athleteImage}
     alt="Athlete training"
     className="absolute inset-0 w-full h-full object-cover"
   />
-  </section>
-
   {/* overlay */}
   <div className="absolute inset-0 bg-black/60" />
 
+  {/* text on top of image */}
+  <div className="relative z-10 px-10">
+    <h1 className="text-4xl md:text-6xl font-extrabold leading-tight text-white">
+      Track every session.
+      <br />
+      <span className="text-orange-400">See exactly why you're getting faster.</span>
+    </h1>
+    <div className="mt-10 flex flex-wrap gap-4">
+      <button
+        onClick={() => handleNavClick("/register", "success")}
+        className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:bg-orange-500 transition shadow-lg"
+      >
+        Start Free
+      </button>
+      <button
+        onClick={() => handleNavClick("/login")}
+        className="border border-white/40 px-8 py-4 rounded-2xl text-lg hover:bg-white/10 transition text-white"
+      >
+        I already have an account
+      </button>
+    </div>
+  </div>
+</section>
 
-        <section className="grid md:grid-cols-2 gap-14 items-center">
+<section className="grid md:grid-cols-2 gap-14 items-center">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
