@@ -1,16 +1,57 @@
-# React + Vite
+# Ascendex
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Track your training. See your progress. Push your limits.**
 
-Currently, two official plugins are available:
+Ascendex is a performance tracking app built for track & field athletes — log your times, set goals by event, and stay consistent with training. Built by an athlete, for athletes.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+-  **Performance Tracking** — log times across 100m, 200m, 300m, and 400m and watch your progress over the season
+-  **Goal Setting** — set target times per event and track how close you are
+-  **Training Calendar** — plan sessions and visualize your training consistency at a glance
+-  **Consistency Score** — a single number that shows how disciplined your training has actually been, not just how you feel about it
+-  **Secure Login** — your data is private and tied to your account
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- **Frontend:** React + Vite
+- **Styling:** Tailwind CSS, Framer Motion
+- **Auth & Data:** Firebase
+- **AI:** Google Gemini API
+- **Hosting:** Netlify
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Live Demo
+
+🔗 [ascendex.netlify.app](#) <!-- replace # with your live Netlify link -->
+
+## Getting Started
+
+Clone the repo:
+```bash
+git clone https://github.com/xstin9/Athelete-app.git
+cd Athelete-app
+```
+
+Install dependencies:
+```bash
+npm install
+```
+
+Add your environment variables (Firebase config, Gemini API key) to a `.env` file:
+```
+VITE_FIREBASE_API_KEY=your_key_here
+VITE_GEMINI_API_KEY=your_key_here
+```
+
+Run locally:
+```bash
+npm run dev
+```
+
+## Author
+
+Built by **Adonis** — 400m / 400m hurdles athlete and CS student, training at HPI. Follow the journey: [@paul_productions](#)
+
+## Status
+
+🚧 Actively in development — new features shipping regularly.
