@@ -1,21 +1,17 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../firebase";
 import { FaGoogle } from "react-icons/fa";
 import Brand from "../components/Brand";
-import sportImg from "../assets/sport part 2.jpg";
-import Athleticspng from "../assets/asthetic.jpg";
+import AthleteHeroIllustration from "../components/AthleteHeroIllustration";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isCoach = searchParams.get('coach') === 'true';
+  const isCoach = searchParams.get("coach") === "true";
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -38,70 +34,64 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-3 bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
-      {/* LEFT IMAGE */}
-      <div className="hidden md:block">
-        <img
-          src={sportImg}
-          alt="Sport"
-          className="h-full w-full object-cover"
-        />
-      </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative hidden items-center justify-center overflow-hidden bg-gradient-to-br from-orange-500/10 via-slate-50 to-slate-100 p-10 lg:flex dark:from-orange-500/15 dark:via-slate-950 dark:to-slate-900">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.18),transparent_38%)]" />
+          <div className="relative w-full max-w-xl">
+            <AthleteHeroIllustration className="max-w-[520px]" />
+          </div>
+        </div>
 
-      {/* CENTER */}
-      <div className="flex flex-col justify-center px-8 max-w-md mx-auto">
-        <Brand className="mb-6" />
-        <h1 className="text-3xl font-bold mb-2">{isCoach ? 'Coach Login' : 'Welcome Back'}</h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">
-          {isCoach ? 'Log in to access coach tools and dashboards.' : 'Log in to continue building your athlete performance.'}
-        </p>  
+        <div className="flex items-center justify-center px-6 py-10 sm:px-8 lg:px-10">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-2xl shadow-slate-200/60 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/30">
+            <div className="mb-6 lg:hidden">
+              <AthleteHeroIllustration className="mx-auto max-w-[320px]" />
+            </div>
 
-        <button
-          onClick={loginWithGoogle}
-          className="flex items-center justify-center gap-2 border py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 mb-3"
-        >
-          <FaGoogle /> Sign in with Google
-        </button>
+            <Brand className="mb-6" />
+            <h1 className="mb-2 text-3xl font-bold">{isCoach ? "Coach Login" : "Welcome Back"}</h1>
+            <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">
+              {isCoach ? "Log in to access coach tools and dashboards." : "Log in to continue building your athlete performance."}
+            </p>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-3">
-          <input
-            className="border px-3 py-2 rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+            <button
+              type="button"
+              onClick={loginWithGoogle}
+              className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+            >
+              <FaGoogle /> Sign in with Google
+            </button>
 
-          <input
-            type="password"
-            className="border px-3 py-2 rounded-md dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+            <form onSubmit={handleLogin} className="flex flex-col gap-3">
+              <input
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-          <button className="bg-orange-600 text-white py-2 rounded-md">
-            Log In
-          </button>
-        </form>
+              <input
+                type="password"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-          New athlete?{" "}
-          <span
-            onClick={() => navigate("/register")}
-            className="text-orange-600 cursor-pointer"
-          >
-            Create an account
-          </span>
-        </p>
-      </div>
+              <button type="submit" className="rounded-xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-500">
+                Log In
+              </button>
+            </form>
 
-      {/* RIGHT IMAGE */}
-      <div className="hidden md:block">
-        <img
-          src={Athleticspng}
-          alt="Athletics"
-          className="h-full w-full object-cover"
-        />
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+              New athlete?{" "}
+              <span onClick={() => navigate("/register")} className="cursor-pointer font-semibold text-orange-600">
+                Create an account
+              </span>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
