@@ -1,14 +1,12 @@
 import React from 'react';
 
-export default function Brand({className}){
+export default function Brand({ className }) {
   return (
-    <div className={`flex items-center gap-2 ${className || ''}`}>
-      <div className="text-2xl font-extrabold tracking-widest select-none">
-        <span className="text-White:text-white">S</span>
-        <span className="inline-block transform -translate-y-1 rotate-6 text-orange-500">A</span>
-        <span className="text-White:text-white">C</span>
+    <div className={`flex items-center ${className || ''}`}>
+      <div className="select-none text-2xl font-black tracking-[0.3em] sm:text-3xl">
+        <span className="text-slate-900 dark:text-white">Ascend</span>
+        <span className="ml-0.5 text-orange-500">ex</span>
       </div>
-      <div className="text-xs text-gray-500 dark:text-gray-400">(Self-Acqusition)</div>
     </div>
   );
 }

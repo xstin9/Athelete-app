@@ -1,0 +1,219 @@
+diff --git a/.env b/.env
+deleted file mode 100644
+index ba7271d..0000000
+--- a/.env
++++ /dev/null
+@@ -1 +0,0 @@
+-STRIPE_SECRET_KEY=sk_test_YOUR_SECRET_KEY
+diff --git a/index.html b/index.html
+index 366426c..d20a674 100644
+--- a/index.html
++++ b/index.html
+@@ -4,7 +4,10 @@
+     <meta charset="UTF-8" />
+     <link rel="icon" type="image/png" href="/logo.png" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-    <title>ascendex</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com" />
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
++    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
++    <title>Ascendex</title>
+   </head>
+   <body>
+     <div id="root"></div>
+diff --git a/src/components/Brand.jsx b/src/components/Brand.jsx
+index c20d947..7a27924 100644
+--- a/src/components/Brand.jsx
++++ b/src/components/Brand.jsx
+@@ -1,14 +1,11 @@
+ import React from 'react';
+ 
+-export default function Brand({className}){
++export default function Brand({ className }) {
+   return (
+-    <div className={`flex items-center gap-2 ${className || ''}`}>
+-      <div className="text-2xl font-extrabold tracking-widest select-none">
+-        <span className="text-White:text-white">S</span>
+-        <span className="inline-block transform -translate-y-1 rotate-6 text-orange-500">A</span>
+-        <span className="text-White:text-white">C</span>
++    <div className={`flex items-center ${className || ''}`}>
++      <div className="text-2xl font-extrabold tracking-tight select-none text-gray-900 dark:text-white">
++        Ascend<span className="text-orange-500">ex</span>
+       </div>
+-      <div className="text-xs text-gray-500 dark:text-gray-400">(Ascendex)</div>
+     </div>
+   );
+ }
+diff --git a/src/pages/Dashboard.jsx b/src/pages/Dashboard.jsx
+index 11daaa7..aa78fdd 100644
+--- a/src/pages/Dashboard.jsx
++++ b/src/pages/Dashboard.jsx
+@@ -125,14 +125,14 @@ function Dashboard() {
+   const navigate = useNavigate();
+ 
+   return (
+-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
++    <div className="min-h-screen bg-gray-50 dark:bg-[#0B0F17] p-6 md:p-8 font-sans">
+       {/* HEADER */}
+-      <div className="flex items-center justify-between mb-8">
+-        <Brand className="scale-125" />
+-        <div className="flex items-center gap-4">
+-          <div className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Athlete Dashboard</div>
+-          <ThemeToggle />
++      <div className="flex items-center justify-between mb-10">
++        <div className="flex items-baseline gap-3">
++          <Brand />
++          <span className="hidden sm:inline text-sm text-gray-400 dark:text-gray-500 font-medium">Dashboard</span>
+         </div>
++        <ThemeToggle />
+       </div>
+ 
+       {/* ATHLETE TYPE MODAL */}
+@@ -154,53 +154,90 @@ function Dashboard() {
+         </div>
+       )}
+ 
+-      {/* CONSISTENCY LOOP & CALENDAR & GOALS */}
+-      <div className="grid md:grid-cols-3 gap-8 mb-8">
+-        <div className="flex flex-col items-center justify-center bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border border-gray-200 dark:border-gray-700">
++      {/* HERO: CONSISTENCY (dominant) + CALENDAR & GOALS (secondary stack) */}
++      <div className="grid lg:grid-cols-5 gap-6 mb-10">
++        {/* Hero card - takes 2 of 5 columns, more padding, more presence */}
++        <div className="lg:col-span-2 flex flex-col items-center justify-center bg-white dark:bg-[#111827] p-10 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+           <ConsistencyLoop current={sessions.length} target={100} />
++          <p className="mt-4 text-sm text-gray-400 dark:text-gray-500 text-center">
++            Sessions logged toward your consistency target
++          </p>
+         </div>
+-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border border-gray-200 dark:border-gray-700">
+-          <div className="font-semibold text-lg mb-2 text-gray-900 dark:text-white flex items-center gap-2">
+-            <FaChartLine className="text-indigo-500" /> Training Calendar
++
++        {/* Secondary stack - calendar + goals share the remaining 3 columns */}
++        <div className="lg:col-span-3 flex flex-col gap-6">
++          <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
++            <div className="font-semibold text-sm mb-3 text-gray-500 dark:text-gray-400 flex items-center gap-2 uppercase tracking-wide">
++              <FaChartLine className="text-orange-500" /> Training Calendar
++            </div>
++            <Calendar value={date} onChange={setDate} className="rounded-lg border border-gray-200 dark:border-gray-800 w-full" />
+           </div>
+-          <Calendar value={date} onChange={setDate} className="rounded-lg border border-gray-300 dark:border-gray-700" />
+-        </div>
+-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border border-gray-200 dark:border-gray-700">
+-          <div className="font-semibold text-lg mb-2 text-gray-900 dark:text-white flex items-center gap-2">
+-            <FaBullseye className="text-orange-500" /> Goals
++
++          <div className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
++            <div className="font-semibold text-sm mb-3 text-gray-500 dark:text-gray-400 flex items-center gap-2 uppercase tracking-wide">
++              <FaBullseye className="text-orange-500" /> Goals
++            </div>
++            <ul className="space-y-2.5">
++              {availableEvents.map(ev => (
++                <li key={ev.id} className="flex items-center gap-3">
++                  <span className="w-14 shrink-0 font-semibold text-gray-700 dark:text-gray-300 text-sm">{ev.label}</span>
++                  <input
++                    className="flex-1 rounded-lg px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition"
++                    placeholder={`Set a target`}
++                    value={personalBests[ev.id + "_goal"] || ""}
++                    onChange={e => setPersonalBests(pb => ({ ...pb, [ev.id + "_goal"]: e.target.value }))}
++                  />
++                </li>
++              ))}
++            </ul>
+           </div>
+-          <ul className="space-y-2">
+-            {availableEvents.map(ev => (
+-              <li key={ev.id} className="flex items-center gap-2">
+-                <span className="font-bold text-orange-600 dark:text-orange-400">{ev.label}:</span>
+-                <input
+-                  className="flex-1 rounded px-2 py-1 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white"
+-                  placeholder={`Goal for ${ev.label}`}
+-                  value={personalBests[ev.id + "_goal"] || ""}
+-                  onChange={e => setPersonalBests(pb => ({ ...pb, [ev.id + "_goal"]: e.target.value }))}
+-                />
+-              </li>
+-            ))}
+-          </ul>
+         </div>
+       </div>
+ 
+-      {/* TIMES/EVENTS FIRST */}
+-      <div className="grid md:grid-cols-3 gap-4 mb-6">
+-        {availableEvents.map((ev) => (
+-          <div key={ev.id} className="bg-white p-4 rounded-2xl shadow">
+-            <p className="text-gray-500 text-sm">{ev.label}</p>
+-            <h2 className="text-2xl font-bold">
+-              {personalBests[ev.id] != null
+-                ? `${personalBests[ev.id].toFixed(2)}${ev.type === "time" ? "s" : "m"}`
+-                : "—"}
+-            </h2>
+-            {justPBEvent === ev.id && (
+-              <span className="text-sm text-green-500">New PB!</span>
+-            )}
+-            <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">Goal: {personalBests[ev.id + "_goal"] || "—"}</div>
+-          </div>
+-        ))}
++      {/* EVENT CARDS */}
++      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
++        {availableEvents.map((ev) => {
++          const hasPB = personalBests[ev.id] != null;
++          const goal = personalBests[ev.id + "_goal"];
++          return (
++            <div
++              key={ev.id}
++              className="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm hover:border-orange-500/40 transition-colors"
++            >
++              <div className="flex items-start justify-between mb-3">
++                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{ev.label}</p>
++                {justPBEvent === ev.id && (
++                  <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">NEW PB</span>
++                )}
++              </div>
++
++              {hasPB ? (
++                <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
++                  {personalBests[ev.id].toFixed(2)}
++                  <span className="text-lg font-semibold text-gray-400 dark:text-gray-500 ml-1">
++                    {ev.type === "time" ? "s" : "m"}
++                  </span>
++                </h2>
++              ) : (
++                <div>
++                  <div className="h-8 flex items-end gap-0.5 mb-1 opacity-30">
++                    {[3, 5, 4, 6, 4, 7, 5].map((h, i) => (
++                      <div key={i} className="flex-1 bg-gray-300 dark:bg-gray-700 rounded-sm" style={{ height: `${h * 4}px` }} />
++                    ))}
++                  </div>
++                  <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">No time logged yet</p>
++                </div>
++              )}
++
++              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
++                <span className="text-gray-400 dark:text-gray-500">Goal</span>
++                <span className={goal ? "font-semibold text-gray-700 dark:text-gray-300" : "text-gray-400 dark:text-gray-600 italic"}>
++                  {goal || "Not set"}
++                </span>
++              </div>
++            </div>
++          );
++        })}
+       </div>
+ 
+       {/* LOG SESSION */}
+diff --git a/tailwind.config.js b/tailwind.config.js
+index 5d7839e..b5de178 100644
+--- a/tailwind.config.js
++++ b/tailwind.config.js
+@@ -5,7 +5,11 @@ export default {
+     "./src/**/*.{js,jsx,ts,tsx}",
+   ],
+   theme: {
+-    extend: {},
++    extend: {
++      fontFamily: {
++        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
++      },
++    },
+   },
+   plugins: [],
+ }

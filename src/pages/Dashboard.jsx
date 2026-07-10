@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import Brand from "../components/Brand";
+import ConsistencyLoop from "../components/ConsistencyLoop";
 import GeminiChatBox from "../dashboard/GeminiChatBox";
 import PerformanceChart from "../components/PerformanceChart";
 import ThemeToggle from "../components/ThemeToggle";
@@ -41,6 +42,12 @@ function StreakBadge({ count }) {
 }
 
 function PBCard({ ev, value, goal, justPB }) {
+  const hasValue = value != null && value !== "";
+  const hasGoal = goal != null && String(goal).trim() !== "";
+  const displayValue = hasValue
+    ? `${value.toFixed(2)}${ev.type === "time" ? "s" : "m"}`
+    : `No ${ev.type === "time" ? "time" : "distance"} logged yet`;
+
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
       style={{
@@ -56,11 +63,22 @@ function PBCard({ ev, value, goal, justPB }) {
       )}
       <div style={{ fontSize: 22, marginBottom: 6 }}>{ev.icon}</div>
       <div style={{ color: "#6b7280", fontSize: 12, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em" }}>{ev.label}</div>
-      <div style={{ color: "#fff", fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em" }}>
-        {value != null ? `${value.toFixed(2)}${ev.type === "time" ? "s" : "m"}` : <span style={{ color: "#374151" }}>—</span>}
+      <div style={{ color: "#fff", fontSize: 16, fontWeight: 700, letterSpacing: "-0.02em", minHeight: 46 }}>
+        {hasValue ? (
+          <span>{displayValue}</span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span>{displayValue}</span>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 28 }}>
+              {[18, 22, 16, 11].map((height, index) => (
+                <div key={index} style={{ height, width: 8, borderRadius: 999, background: index === 2 ? "rgba(249,115,22,0.65)" : "rgba(255,255,255,0.12)" }} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <div style={{ color: "#4b5563", fontSize: 11, marginTop: 6 }}>
-        Goal: <span style={{ color: "#f97316" }}>{goal || "—"}</span>
+        Goal: <span style={{ color: "#f97316", fontStyle: hasGoal ? "normal" : "italic", opacity: hasGoal ? 1 : 0.75 }}>{hasGoal ? goal : "Not set"}</span>
       </div>
     </motion.div>
   );
@@ -166,30 +184,54 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* HEADER */}
-      <div style={{ borderBottom: "1px solid #0f172a", background: "#030712", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 40 }}>
-        <Brand />
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ color: "#374151", fontSize: 13 }}>Dashboard</span>
+      <div className="sticky top-0 z-40 border-b border-slate-900/80 bg-slate-950/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Brand />
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Dashboard</span>
+          </div>
           <ThemeToggle />
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
         {/* TOP ROW */}
-        <div style={{ display: "grid", gridTemplateColumns: "180px 1fr 1fr", gap: 16, marginBottom: 24 }}>
-          <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 20, padding: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <StreakBadge count={streak} />
+        <div className="mb-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-3xl border border-slate-800/80 bg-slate-950/80 p-6 shadow-2xl shadow-black/20 sm:p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-xs">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Consistency</div>
+                <h2 className="text-xl font-semibold text-white">Keep the streak alive</h2>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Small, repeatable sessions build the momentum behind every PB.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-5">
+                <ConsistencyLoop current={Math.max(0, Math.min(24, sessions.length))} target={24} />
+              </div>
+            </div>
           </div>
-          <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 20, padding: 28 }}>
-            <div style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Injury Risk</div>
-            <RiskScore sessions={sessions} type="injury" />
-            <div style={{ color: "#374151", fontSize: 11, marginTop: 8 }}>Based on last 7 sessions</div>
-          </div>
-          <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 20, padding: 28 }}>
-            <div style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Session Quality</div>
-            <RiskScore sessions={sessions} type="session" />
-            <div style={{ color: "#374151", fontSize: 11, marginTop: 8 }}>Based on last 7 sessions</div>
+
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 p-5 sm:p-6">
+              <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">Training Calendar</div>
+              <Calendar value={date} onChange={setDate} className="ascendex-calendar" />
+            </div>
+            <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+                <FaBullseye className="text-orange-500" /> Goals
+              </div>
+              <div className="flex flex-col gap-3">
+                {availableEvents.map(ev => (
+                  <div key={ev.id} className="flex items-center gap-3">
+                    <span className="w-16 text-sm font-semibold text-orange-500">{ev.label}</span>
+                    <input placeholder={`Target ${ev.type === "time" ? "time (s)" : "distance (m)"}`}
+                      value={personalBests[ev.id + "_goal"] || ""}
+                      onChange={e => setPersonalBests(pb => ({ ...pb, [ev.id + "_goal"]: e.target.value }))}
+                      className="flex-1 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500" />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -253,30 +295,6 @@ export default function Dashboard() {
           </AnimatePresence>
         </div>
 
-        {/* CALENDAR + GOALS */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-          <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 20, padding: 24 }}>
-            <div style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Training Calendar</div>
-            <Calendar value={date} onChange={setDate} className="sac-calendar" />
-          </div>
-          <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 20, padding: 24 }}>
-            <div style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <FaBullseye style={{ color: "#f97316" }} /> Goals
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {availableEvents.map(ev => (
-                <div key={ev.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ color: "#f97316", fontWeight: 700, fontSize: 13, width: 60 }}>{ev.label}</span>
-                  <input placeholder={`Target ${ev.type === "time" ? "time (s)" : "distance (m)"}`}
-                    value={personalBests[ev.id + "_goal"] || ""}
-                    onChange={e => setPersonalBests(pb => ({ ...pb, [ev.id + "_goal"]: e.target.value }))}
-                    style={{ flex: 1, background: "#111827", border: "1px solid #1f2937", borderRadius: 8, padding: "8px 12px", color: "#fff", fontSize: 13, outline: "none" }} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* PERFORMANCE CHART */}
         <div style={{ background: "#0d1117", border: "1px solid #1f2937", borderRadius: 20, padding: 24, marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -301,13 +319,13 @@ export default function Dashboard() {
       </div>
 
       <style>{`
-        .sac-calendar { background: transparent !important; border: none !important; color: #fff !important; width: 100% !important; }
-        .sac-calendar .react-calendar__tile { background: transparent !important; color: #9ca3af !important; border-radius: 8px !important; }
-        .sac-calendar .react-calendar__tile:hover { background: #1f2937 !important; color: #fff !important; }
-        .sac-calendar .react-calendar__tile--active { background: #ea580c !important; color: #fff !important; }
-        .sac-calendar .react-calendar__tile--now { border: 1px solid #ea580c !important; color: #f97316 !important; }
-        .sac-calendar .react-calendar__navigation button { background: transparent !important; color: #fff !important; }
-        .sac-calendar .react-calendar__month-view__weekdays { color: #4b5563 !important; font-size: 11px !important; }
+        .ascendex-calendar { background: transparent !important; border: none !important; color: #fff !important; width: 100% !important; }
+        .ascendex-calendar .react-calendar__tile { background: transparent !important; color: #9ca3af !important; border-radius: 8px !important; }
+        .ascendex-calendar .react-calendar__tile:hover { background: #1f2937 !important; color: #fff !important; }
+        .ascendex-calendar .react-calendar__tile--active { background: #ea580c !important; color: #fff !important; }
+        .ascendex-calendar .react-calendar__tile--now { border: 1px solid #ea580c !important; color: #f97316 !important; }
+        .ascendex-calendar .react-calendar__navigation button { background: transparent !important; color: #fff !important; }
+        .ascendex-calendar .react-calendar__month-view__weekdays { color: #4b5563 !important; font-size: 11px !important; }
       `}</style>
     </div>
   );
