@@ -22,7 +22,7 @@ Ascendex is a performance tracking app built for track & field athletes — log 
 
 ## Live Demo
 
-🔗 [http://ascendex.netlify.app](#) <!-- replace # with your live Netlify link -->
+🔗 [athlete-app-pi.vercel.app](#) <!-- replace # with your live Netlify link -->
 
 ## Getting Started
 
