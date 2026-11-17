@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
@@ -13,6 +13,7 @@ import { FaTrophy, FaBullseye, FaPlus, FaTimes, FaArrowLeft, FaCheck, FaSpinner 
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { predictRaceTime } from "../utils/predictRaceTime";
 
 const EVENTS = [
   { id: "100m", label: "100m", type: "time", icon: "⚡" },
@@ -22,6 +23,18 @@ const EVENTS = [
   { id: "longJump", label: "Long Jump", type: "distance", icon: "🦘" },
   { id: "highJump", label: "High Jump", type: "distance", icon: "🎯" },
 ];
+const RACE_EVENTS = EVENTS.filter((event) => event.type === "time");
+const RACE_STAGES = ["base", "build", "peak", "taper", "off-season"];
+const EMPTY_RACE_PLAN = { raceDate: "", event: "100m", stage: "base", goalTime: "" };
+
+function getWeeksToRace(raceDate) {
+  if (!raceDate) return null;
+  const raceDay = new Date(`${raceDate}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysUntilRace = Math.ceil((raceDay - today) / 86400000);
+  return daysUntilRace > 0 ? Math.ceil(daysUntilRace / 7) : null;
+}
 
 function StreakBadge({ count }) {
   return (
@@ -32,17 +45,17 @@ function StreakBadge({ count }) {
         transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         style={{
           width: 80, height: 80, borderRadius: "50%",
-          background: count > 0 ? "radial-gradient(circle, #f97316 0%, #ea580c 60%, #c2410c 100%)" : "radial-gradient(circle, #374151 0%, #1f2937 100%)",
+          background: count > 0 ? "radial-gradient(circle, var(--accent) 0%, var(--accent-hover) 100%)" : "radial-gradient(circle, var(--color-muted-strong) 0%, var(--color-border) 100%)",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: count > 0 ? "0 0 30px rgba(249,115,22,0.5)" : "none", fontSize: 28,
         }}>🔥</motion.div>
-      <div style={{ color: "#f97316", fontWeight: 800, fontSize: 22 }}>{count}</div>
-      <div style={{ color: "#6b7280", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Day Streak</div>
+      <div style={{ color: "var(--accent)", fontWeight: 800, fontSize: 22 }}>{count}</div>
+      <div style={{ color: "var(--color-muted)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase" }}>Day Streak</div>
     </motion.div>
   );
 }
 
-function PBCard({ ev, value, goal, justPB, isDark }) {
+function PBCard({ ev, value, goal, justPB }) {
   const hasValue = value != null && value !== "";
   const hasGoal = goal != null && String(goal).trim() !== "";
   const displayValue = hasValue
@@ -50,10 +63,10 @@ function PBCard({ ev, value, goal, justPB, isDark }) {
     : `No ${ev.type === "time" ? "time" : "distance"} logged yet`;
   const cardBg = justPB
     ? "linear-gradient(135deg, rgba(234,88,12,0.18), rgba(249,115,22,0.08))"
-    : isDark ? "#111827" : "#ffffff";
-  const cardBorder = justPB ? "1.5px solid #ea580c" : isDark ? "1px solid #1f2937" : "1px solid #e2e8f0";
-  const cardText = isDark ? "#fff" : "#111827";
-  const mutedText = isDark ? "#6b7280" : "#64748b";
+    : "var(--color-card)";
+  const cardBorder = justPB ? "1.5px solid var(--accent)" : "1px solid var(--color-border)";
+  const cardText = "var(--color-text)";
+  const mutedText = "var(--color-muted)";
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -64,7 +77,7 @@ function PBCard({ ev, value, goal, justPB, isDark }) {
       }}>
       {justPB && (
         <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}
-          style={{ position: "absolute", top: 10, right: 12, background: "#ea580c", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 20, padding: "2px 8px" }}>
+          style={{ position: "absolute", top: 10, right: 12, background: "var(--accent)", color: "var(--accent-foreground)", fontSize: 10, fontWeight: 700, borderRadius: 20, padding: "2px 8px" }}>
           NEW PB 🏆
         </motion.div>
       )}
@@ -85,7 +98,7 @@ function PBCard({ ev, value, goal, justPB, isDark }) {
         )}
       </div>
       <div style={{ color: mutedText, fontSize: 11, marginTop: 6 }}>
-        Goal: <span style={{ color: "#f97316", fontStyle: hasGoal ? "normal" : "italic", opacity: hasGoal ? 1 : 0.75 }}>{hasGoal ? goal : "Not set"}</span>
+        Goal: <span style={{ color: "var(--accent)", fontStyle: hasGoal ? "normal" : "italic", opacity: hasGoal ? 1 : 0.75 }}>{hasGoal ? goal : "Not set"}</span>
       </div>
     </motion.div>
   );
@@ -108,9 +121,161 @@ function RiskScore({ sessions, type }) {
     let label = "Poor"; let color = "#ef4444";
     if (score >= 70) { label = "Great"; color = "#22c55e"; }
     else if (score >= 40) { label = "Okay"; color = "#f59e0b"; }
-    return <div style={{ color, fontSize: 20, fontWeight: 800 }}>{label} <span style={{ fontSize: 13, fontWeight: 400, color: "#6b7280" }}>({score}%)</span></div>;
+    return <div style={{ color, fontSize: 20, fontWeight: 800 }}>{label} <span style={{ fontSize: 13, fontWeight: 400, color: "var(--color-muted)" }}>({score}%)</span></div>;
   }
   return null;
+}
+
+function PredictionCard({ sessions, racePlan, palette, raceProjection }) {
+  const selectedEventResults = sessions.filter((session) => {
+    const matchId = session.eventId === racePlan.event || session.event === racePlan.event;
+    const metric = Number(session.time ?? session.value ?? session.metric ?? 0);
+    return matchId && Number.isFinite(metric) && metric > 0;
+  }).sort((a, b) => new Date(a.date || a.day || a.timestamp) - new Date(b.date || b.day || b.timestamp));
+
+  if (!raceProjection.hasPrediction) {
+    return (
+      <div className="rounded-2xl border p-5 sm:p-6" style={{ background: palette.surface, borderColor: palette.border }}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Predicted time</div>
+          <span className="rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]" style={{ borderColor: palette.border, background: palette.surfaceAlt, color: palette.text }}>
+            Not enough data
+          </span>
+        </div>
+        <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-4 py-6 text-center" style={{ borderColor: palette.border, background: palette.surfaceAlt }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: palette.text }}>—</div>
+          <div style={{ fontSize: 14, color: palette.muted, maxWidth: 260 }}>{raceProjection.message}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const chartWidth = 640;
+  const chartHeight = 220;
+  const padding = 24;
+  const allValues = [
+    ...selectedEventResults.map((session) => Number(session.time || session.value)),
+    raceProjection.likelyRange.low,
+    raceProjection.predictedTime,
+    raceProjection.likelyRange.high,
+  ].filter((value) => Number.isFinite(value));
+  const minValue = Math.min(...allValues);
+  const maxValue = Math.max(...allValues);
+  const span = maxValue - minValue || 1;
+  const startDate = selectedEventResults.length ? new Date(selectedEventResults[0].date || selectedEventResults[0].day || selectedEventResults[0].timestamp) : new Date();
+  const endDate = racePlan.raceDate ? new Date(`${racePlan.raceDate}T00:00:00`) : new Date();
+  const xScale = (date) => {
+    const total = Math.max(1, endDate.getTime() - startDate.getTime());
+    const ratio = (new Date(date).getTime() - startDate.getTime()) / total;
+    return padding + ratio * (chartWidth - padding * 2);
+  };
+  const yScale = (value) => chartHeight - padding - ((value - minValue) / span) * (chartHeight - padding * 2);
+
+  const pastPath = selectedEventResults.map((session, index) => {
+    const value = Number(session.time || session.value);
+    const x = xScale(new Date(session.date || session.day || session.timestamp));
+    const y = yScale(value);
+    return `${index === 0 ? "M" : "L"}${x},${y}`;
+  }).join(" ");
+
+  const lastPast = selectedEventResults[selectedEventResults.length - 1];
+  const lastTime = Number(lastPast.time || lastPast.value);
+  const forecastX = xScale(endDate);
+  const forecastY = yScale(raceProjection.predictedTime);
+  const forecastLowY = yScale(raceProjection.likelyRange.low);
+  const forecastHighY = yScale(raceProjection.likelyRange.high);
+  const lastX = xScale(new Date(lastPast.date || lastPast.day || lastPast.timestamp));
+  const lastY = yScale(lastTime);
+
+  const bandPath = [
+    `M ${lastX} ${forecastHighY}`,
+    `L ${forecastX} ${forecastHighY}`,
+    `L ${forecastX} ${forecastLowY}`,
+    `L ${lastX} ${forecastLowY}`,
+    "Z",
+  ].join(" ");
+
+  const confidenceStyle =
+    raceProjection.confidence === "high"
+      ? { background: "rgba(34,197,94,0.14)", borderColor: "rgba(34,197,94,0.5)", color: "#22c55e" }
+      : raceProjection.confidence === "medium"
+        ? { background: "rgba(245,158,11,0.14)", borderColor: "rgba(245,158,11,0.5)", color: "#f59e0b" }
+        : { background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.42)", color: "#ef4444" };
+
+  const confidenceText = raceProjection.confidence === "high" ? "High confidence" : raceProjection.confidence === "medium" ? "Moderate confidence" : "Low confidence";
+
+  return (
+    <div className="rounded-2xl border p-5 sm:p-6" style={{ background: palette.surface, borderColor: palette.border }}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Predicted time</div>
+        <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...confidenceStyle, borderColor: confidenceStyle.borderColor || palette.border }}>
+          {confidenceText}
+        </span>
+      </div>
+
+      <div className="mb-3 flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-4xl font-black tracking-tight sm:text-5xl" style={{ color: palette.text }}>
+            {raceProjection.predictedTime.toFixed(2)}s
+          </div>
+          <div className="mt-2 text-sm" style={{ color: palette.muted }}>
+            Likely range: {raceProjection.likelyRange.low.toFixed(2)}s to {raceProjection.likelyRange.high.toFixed(2)}s
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-2xl border" style={{ background: palette.surfaceAlt, borderColor: palette.border }}>
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="block h-[190px] w-full" preserveAspectRatio="none" aria-label="Race prediction chart">
+          <defs>
+            <linearGradient id="rangeBand" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="rgba(249,115,22,0.28)" />
+              <stop offset="100%" stopColor="rgba(249,115,22,0.08)" />
+            </linearGradient>
+          </defs>
+
+          {[0, 1, 2, 3].map((step) => {
+            const y = padding + (step / 3) * (chartHeight - padding * 2);
+            return <line key={step} x1={padding} x2={chartWidth - padding} y1={y} y2={y} stroke={palette.border} strokeDasharray="4 6" strokeOpacity="0.8" />;
+          })}
+
+          <path d={bandPath} fill="url(#rangeBand)" opacity="0.9" />
+
+          {selectedEventResults.length > 1 && (
+            <path d={pastPath} fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+
+          {selectedEventResults.map((session) => {
+            const value = Number(session.time || session.value);
+            const x = xScale(new Date(session.date || session.day || session.timestamp));
+            const y = yScale(value);
+            return <circle key={`${session.date}-${value}`} cx={x} cy={y} r="4" fill="var(--accent)" />;
+          })}
+
+          <line x1={lastX} x2={forecastX} y1={lastY} y2={forecastY} stroke="var(--accent)" strokeDasharray="8 8" strokeWidth="2.2" />
+
+          <line x1={forecastX} x2={forecastX} y1={padding} y2={chartHeight - padding} stroke={palette.muted} strokeDasharray="5 7" strokeOpacity="0.8" />
+          <circle cx={forecastX} cy={forecastY} r="6" fill="var(--accent-hover)" stroke="var(--accent)" strokeWidth="2" />
+          <text x={forecastX + 10} y={forecastY - 8} fontSize="11" fill={palette.text} fontWeight="700">Race day</text>
+        </svg>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm" style={{ color: palette.text }}>
+        <div><span style={{ fontWeight: 700, color: palette.muted }}>Trend</span>: {raceProjection.explanation.trend}</div>
+        <div><span style={{ fontWeight: 700, color: palette.muted }}>Stage</span>: {raceProjection.explanation.stage}</div>
+        <div><span style={{ fontWeight: 700, color: palette.muted }}>Watch</span>: {raceProjection.explanation.watch}</div>
+      </div>
+
+      <div className="mt-4 rounded-xl px-3 py-2 text-xs font-medium" style={{ background: palette.surfaceAlt, border: `1px solid ${palette.border}`, color: palette.muted }}>
+        An estimate from your own results and training stage, not a promise.
+      </div>
+
+      {raceProjection.warning && (
+        <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-200">
+          {raceProjection.warning}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -127,6 +292,9 @@ export default function Dashboard() {
   const [goalInputs, setGoalInputs] = useState({});
   const [isSavingGoals, setIsSavingGoals] = useState(false);
   const [goalsStatus, setGoalsStatus] = useState(null);
+  const [racePlan, setRacePlan] = useState(EMPTY_RACE_PLAN);
+  const [raceStatus, setRaceStatus] = useState(null);
+  const [isSavingRace, setIsSavingRace] = useState(false);
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const [athleteType, setAthleteType] = useState(() => {
     const saved = localStorage.getItem("athleteType");
@@ -134,43 +302,50 @@ export default function Dashboard() {
   });
   const [showAthleteTypeModal, setShowAthleteTypeModal] = useState(false);
   const [chartEvent, setChartEvent] = useState("100m");
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") return true;
-    const saved = localStorage.getItem("theme");
-    if (saved) return saved === "dark";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", isDark);
-    root.style.colorScheme = isDark ? "dark" : "light";
-    localStorage.setItem("theme", isDark ? "dark" : "light");
-  }, [isDark]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const syncTheme = () => setIsDark(root.classList.contains("dark"));
-    syncTheme();
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (event) => {
-      if (!localStorage.getItem("theme")) setIsDark(event.matches);
-    };
-    media.addEventListener?.("change", handleChange);
-    const observer = new MutationObserver(syncTheme);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
-    return () => {
-      media.removeEventListener?.("change", handleChange);
-      observer.disconnect();
-    };
-  }, []);
-
   useEffect(() => { if (!athleteType) setShowAthleteTypeModal(true); }, [athleteType]);
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("sessions"));
     if (saved) setSessions(saved);
     const savedPBs = JSON.parse(localStorage.getItem("personalBests"));
     if (savedPBs) setPersonalBests(savedPBs);
+  }, []);
+
+  useEffect(() => {
+    let unsubscribeRace = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubscribeRace) {
+        unsubscribeRace();
+        unsubscribeRace = null;
+      }
+
+      if (!user) {
+        setRacePlan(EMPTY_RACE_PLAN);
+        setRaceStatus({ type: "info", message: "Sign in to sync your race plan." });
+        return;
+      }
+
+      const raceRef = doc(db, "users", user.uid, "race", "profile");
+      unsubscribeRace = onSnapshot(raceRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const savedRace = snapshot.data();
+          setRacePlan({
+            raceDate: savedRace.raceDate || "",
+            event: savedRace.event || "100m",
+            stage: RACE_STAGES.includes(savedRace.stage) ? savedRace.stage : "base",
+            goalTime: savedRace.goalTime ?? "",
+          });
+        } else {
+          setRacePlan(EMPTY_RACE_PLAN);
+        }
+      }, (error) => {
+        setRaceStatus({ type: "error", message: error.message || "Could not load race plan." });
+      });
+    });
+
+    return () => {
+      if (unsubscribeRace) unsubscribeRace();
+      unsubscribeAuth();
+    };
   }, []);
   useEffect(() => { localStorage.setItem("sessions", JSON.stringify(sessions)); }, [sessions]);
   useEffect(() => { localStorage.setItem("personalBests", JSON.stringify(personalBests)); }, [personalBests]);
@@ -210,29 +385,26 @@ export default function Dashboard() {
     ? EVENTS.filter((ev) => ev.type === "distance")
     : EVENTS.filter((ev) => ev.type === "time");
 
-  const palette = isDark ? {
-    background: "#030712",
-    surface: "#0d1117",
-    surfaceAlt: "#111827",
-    border: "#1f2937",
-    text: "#ffffff",
-    muted: "#6b7280",
-    mutedStrong: "#9ca3af",
-    panelGlow: "rgba(0,0,0,0.2)",
-    inputBg: "#111827",
-    inputBorder: "#1f2937",
-  } : {
-    background: "#f8fafc",
-    surface: "#ffffff",
-    surfaceAlt: "#f8fafc",
-    border: "#e2e8f0",
-    text: "#111827",
-    muted: "#64748b",
-    mutedStrong: "#475569",
-    panelGlow: "rgba(15,23,42,0.06)",
-    inputBg: "#ffffff",
-    inputBorder: "#cbd5e1",
+  const palette = {
+    background: "var(--color-bg)",
+    surface: "var(--color-card)",
+    surfaceAlt: "var(--color-card-alt)",
+    border: "var(--color-border)",
+    text: "var(--color-text)",
+    muted: "var(--color-muted)",
+    mutedStrong: "var(--color-muted-strong)",
+    panelGlow: "var(--panel-glow)",
+    inputBg: "var(--color-input-bg)",
+    inputBorder: "var(--color-input-border)",
   };
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minRaceDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+  const weeksToRace = getWeeksToRace(racePlan.raceDate);
+  const raceProjection = useMemo(
+    () => predictRaceTime(sessions, racePlan, sessions),
+    [sessions, racePlan]
+  );
 
   async function handleSaveGoals() {
     if (!currentUser) {
@@ -259,6 +431,40 @@ export default function Dashboard() {
     }
   }
 
+  async function handleSaveRace(event) {
+    event.preventDefault();
+    if (!currentUser) {
+      setRaceStatus({ type: "error", message: "Sign in to sync your race plan." });
+      return;
+    }
+
+    const raceDay = new Date(`${racePlan.raceDate}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!racePlan.raceDate || Number.isNaN(raceDay.getTime()) || raceDay <= today) {
+      setRaceStatus({ type: "error", message: "Choose a race date in the future." });
+      return;
+    }
+
+    setIsSavingRace(true);
+    setRaceStatus(null);
+    const raceData = {
+      raceDate: racePlan.raceDate,
+      event: racePlan.event,
+      stage: racePlan.stage,
+    };
+    if (String(racePlan.goalTime).trim()) raceData.goalTime = String(racePlan.goalTime).trim();
+
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "race", "profile"), raceData);
+      setRaceStatus({ type: "success", message: "Race plan saved" });
+    } catch (error) {
+      setRaceStatus({ type: "error", message: error.message || "Could not save race plan." });
+    } finally {
+      setIsSavingRace(false);
+    }
+  }
+
   function handleAddSession(e) {
     e.preventDefault();
     const metricNum = parseFloat(newTime);
@@ -280,7 +486,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: palette.background, paddingBottom: 60, color: palette.text, fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: palette.background, paddingBottom: 60, color: palette.text, fontFamily: "Inter, sans-serif" }}>
 
       {/* ATHLETE TYPE MODAL */}
       <AnimatePresence>
@@ -290,12 +496,12 @@ export default function Dashboard() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
               style={{ background: palette.surface, border: `1px solid ${palette.border}`, borderRadius: 20, padding: 40, maxWidth: 360, width: "90%" }}>
               <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>🏃</div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, textAlign: "center", marginBottom: 8, color: "#fff" }}>What type of athlete are you?</h2>
-              <p style={{ color: "#6b7280", textAlign: "center", fontSize: 13, marginBottom: 28 }}>This helps us show the right events for you</p>
+              <h2 style={{ fontSize: 20, fontWeight: 700, textAlign: "center", marginBottom: 8, color: palette.text }}>What type of athlete are you?</h2>
+              <p style={{ color: palette.muted, textAlign: "center", fontSize: 13, marginBottom: 28 }}>This helps us show the right events for you</p>
               <div style={{ display: "flex", gap: 12 }}>
-                {[["sprinter", "⚡ Sprinter", "#ea580c"], ["jumper", "🦘 Jumper", "#7c3aed"]].map(([type, label, color]) => (
+                  {[["sprinter", "⚡ Sprinter", "var(--accent)"], ["jumper", "🦘 Jumper", "#7c3aed"]].map(([type, label, color]) => (
                   <button key={type} onClick={() => { setAthleteType(type); localStorage.setItem("athleteType", JSON.stringify(type)); setShowAthleteTypeModal(false); }}
-                    style={{ flex: 1, background: color, border: "none", borderRadius: 12, padding: "14px 0", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                    style={{ flex: 1, background: color, border: "none", borderRadius: 12, padding: "14px 0", color: type === "sprinter" ? "var(--accent-foreground)" : "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
                     {label}
                   </button>
                 ))}
@@ -306,17 +512,18 @@ export default function Dashboard() {
       </AnimatePresence>
 
       {/* HEADER */}
-      <div className="sticky top-0 z-40 border-b border-slate-900/80 bg-slate-950/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="dashboard-header sticky top-0 z-40 border-b px-4 py-4 backdrop-blur sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Brand />
-            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Dashboard</span>
+            <span className="text-sm font-medium" style={{ color: palette.muted }}>Dashboard</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+              className="flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition"
+              style={{ borderColor: palette.border, background: palette.surfaceAlt, color: palette.text }}
             >
               <FaArrowLeft size={12} />
               Back
@@ -326,74 +533,125 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-6 sm:px-4 lg:px-6" style={{ maxWidth: "100%" }}>
 
-        {/* TOP ROW */}
-        <div className="mb-6 grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="self-start rounded-3xl border p-6 shadow-2xl sm:p-8" style={{ background: palette.surface, borderColor: palette.border, boxShadow: `0 18px 50px ${palette.panelGlow}` }}>
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="max-w-xs">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Consistency</div>
-                <h2 className="text-xl font-semibold" style={{ color: palette.text }}>Keep the streak alive</h2>
-                <p className="mt-2 text-sm" style={{ color: palette.muted }}>Small, repeatable sessions build the momentum behind every PB.</p>
+        <div className="mb-4 grid items-start gap-4">
+          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="self-start border shadow-2xl" style={{ background: palette.surface, borderColor: palette.border, boxShadow: `0 18px 50px ${palette.panelGlow}`, borderRadius: 16, padding: 24 }}>
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="max-w-xs">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Today</div>
+                  <h2 className="text-xl font-semibold" style={{ color: palette.text }}>Keep the streak alive</h2>
+                  <p className="mt-2 text-sm" style={{ color: palette.muted }}>Small, repeatable sessions build the momentum behind every PB.</p>
+                </div>
+                <div className="border" style={{ background: palette.surfaceAlt, borderColor: palette.border, borderRadius: 16, padding: 20 }}>
+                  <ConsistencyLoop current={Math.max(0, Math.min(24, sessions.length))} target={24} />
+                </div>
               </div>
-              <div className="rounded-2xl border p-5" style={{ background: palette.surfaceAlt, borderColor: palette.border }}>
-                <ConsistencyLoop current={Math.max(0, Math.min(24, sessions.length))} target={24} />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="border" style={{ background: palette.surface, borderColor: palette.border, borderRadius: 16, padding: 20 }}>
+                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Readiness</div>
+                <div style={{ color: palette.text, fontWeight: 700, fontSize: 18 }}>Strong</div>
+                <div style={{ color: palette.muted, fontSize: 13, marginTop: 6 }}>Recovery trend is stable and session quality is up.</div>
+              </div>
+              <div className="border" style={{ background: palette.surface, borderColor: palette.border, borderRadius: 16, padding: 20 }}>
+                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Injury signals</div>
+                <RiskScore sessions={sessions} type="injury" />
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border p-5 sm:p-6" style={{ background: palette.surface, borderColor: palette.border }}>
-              <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Training Calendar</div>
-              <Calendar value={date} onChange={setDate} className="ascendex-calendar" />
-            </div>
-            <div className="rounded-2xl border p-5 sm:p-6" style={{ background: palette.surface, borderColor: palette.border }}>
-              <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>
-                <FaBullseye className="text-orange-500" /> Goals
+          <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+            <div className="border" style={{ background: palette.surface, borderColor: palette.border, borderRadius: 16, padding: 24 }}>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: palette.muted }}>Race day</div>
+                <span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ borderColor: palette.border, background: palette.surfaceAlt, color: palette.text }}>
+                  {weeksToRace === null
+                    ? racePlan.raceDate ? "Date must be in the future" : "Set a race date"
+                    : `${weeksToRace} ${weeksToRace === 1 ? "week" : "weeks"} to race`}
+                </span>
               </div>
-              <div className="flex flex-col gap-3">
-                {availableEvents.map(ev => (
-                  <div key={ev.id} className="flex items-center gap-3">
-                    <span className="w-16 text-sm font-semibold text-orange-500">{ev.label}</span>
-                    <input placeholder={`Target ${ev.type === "time" ? "time (s)" : "distance (m)"}`}
-                      value={goalInputs[`${ev.id}_goal`] || ""}
-                      onChange={e => setGoalInputs((prev) => ({ ...prev, [`${ev.id}_goal`]: e.target.value }))}
-                      className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none ring-0" style={{ background: palette.inputBg, borderColor: palette.inputBorder, color: palette.text }} />
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-xs text-slate-500 dark:text-slate-400">Goals sync online to your account for cross-device access.</div>
+              <form onSubmit={handleSaveRace} className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1.5 text-xs font-medium" style={{ color: palette.muted }}>
+                  Race date
+                  <input
+                    type="date"
+                    min={minRaceDate}
+                    required
+                    value={racePlan.raceDate}
+                    onChange={(event) => setRacePlan((plan) => ({ ...plan, raceDate: event.target.value }))}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: palette.inputBg, borderColor: palette.inputBorder, color: palette.text, colorScheme: "inherit" }}
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5 text-xs font-medium" style={{ color: palette.muted }}>
+                  Event
+                  <select
+                    value={racePlan.event}
+                    onChange={(event) => setRacePlan((plan) => ({ ...plan, event: event.target.value }))}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: palette.inputBg, borderColor: palette.inputBorder, color: palette.text }}
+                  >
+                    {RACE_EVENTS.map((event) => <option key={event.id} value={event.id}>{event.label}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5 text-xs font-medium" style={{ color: palette.muted }}>
+                  Training stage
+                  <select
+                    value={racePlan.stage}
+                    onChange={(event) => setRacePlan((plan) => ({ ...plan, stage: event.target.value }))}
+                    className="rounded-lg border px-3 py-2 text-sm capitalize"
+                    style={{ background: palette.inputBg, borderColor: palette.inputBorder, color: palette.text }}
+                  >
+                    {RACE_STAGES.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1.5 text-xs font-medium" style={{ color: palette.muted }}>
+                  Goal time (optional)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 11.20"
+                    value={racePlan.goalTime}
+                    onChange={(event) => setRacePlan((plan) => ({ ...plan, goalTime: event.target.value }))}
+                    className="rounded-lg border px-3 py-2 text-sm"
+                    style={{ background: palette.inputBg, borderColor: palette.inputBorder, color: palette.text }}
+                  />
+                </label>
                 <button
-                  type="button"
-                  onClick={handleSaveGoals}
-                  disabled={isSavingGoals}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+                  type="submit"
+                  disabled={isSavingRace}
+                  className="mt-1 inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70"
+                  style={{ background: "var(--accent)", color: "var(--accent-foreground)", minHeight: 44 }}
                 >
-                  {isSavingGoals ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaCheck /> Save Goals</>}
+                  {isSavingRace ? <><FaSpinner className="animate-spin" /> Saving...</> : <><FaCheck /> Save Race Plan</>}
                 </button>
-              </div>
-              {goalsStatus && (
-                <div className={`mt-2 text-sm ${goalsStatus.type === "success" ? "text-emerald-500" : goalsStatus.type === "error" ? "text-red-500" : "text-slate-500 dark:text-slate-400"}`}>
-                  {goalsStatus.message}
-                </div>
-              )}
+                {raceStatus && (
+                  <div className={`text-sm ${raceStatus.type === "success" ? "text-emerald-500" : raceStatus.type === "error" ? "text-red-500" : ""}`} style={raceStatus.type === "info" ? { color: palette.muted } : undefined} role="status">
+                    {raceStatus.message}
+                  </div>
+                )}
+              </form>
             </div>
+
+            <PredictionCard sessions={sessions} racePlan={racePlan} palette={palette} raceProjection={raceProjection} />
           </div>
         </div>
 
         {/* PB CARDS */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Personal Bests</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#f97316", fontSize: 12 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: palette.text }}>Personal Bests</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--accent)", fontSize: 12 }}>
               <FaTrophy size={11} /> <span>Your records</span>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
             {availableEvents.map((ev) => (
-              <PBCard key={ev.id} ev={ev} value={personalBests[ev.id]} goal={goalInputs[`${ev.id}_goal`] || personalBests[`${ev.id}_goal`]} justPB={justPBEvent === ev.id} isDark={isDark} />
+              <PBCard key={ev.id} ev={ev} value={personalBests[ev.id]} goal={goalInputs[`${ev.id}_goal`] || personalBests[`${ev.id}_goal`]} justPB={justPBEvent === ev.id} />
             ))}
           </div>
         </div>
@@ -402,8 +660,8 @@ export default function Dashboard() {
         <div style={{ marginBottom: 24 }}>
           <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowForm(s => !s)}
             style={{
-              background: showForm ? "#1f2937" : "linear-gradient(135deg, #ea580c, #f97316)",
-              border: "none", borderRadius: 14, padding: "14px 28px", color: "#fff", fontWeight: 700,
+              background: showForm ? "var(--color-card-alt)" : "var(--accent)",
+              border: showForm ? "1px solid var(--color-border)" : "none", borderRadius: 14, padding: "14px 28px", color: showForm ? "var(--color-text)" : "var(--accent-foreground)", fontWeight: 700,
               fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
               boxShadow: showForm ? "none" : "0 0 24px rgba(234,88,12,0.3)",
             }}>
@@ -413,27 +671,27 @@ export default function Dashboard() {
             {showForm && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
                 <div style={{ background: palette.surface, border: `1px solid ${palette.border}`, borderRadius: 20, padding: 28, marginTop: 12 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, color: "#fff" }}>New Session</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 20, color: palette.text }}>New Session</h3>
                   <form onSubmit={handleAddSession} style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>Event</label>
+                      <label style={{ color: palette.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>Event</label>
                       <select value={newEvent} onChange={(e) => setNewEvent(e.target.value)}
                         style={{ background: palette.inputBg, border: `1px solid ${palette.inputBorder}`, borderRadius: 10, padding: "10px 14px", color: palette.text, fontSize: 14, cursor: "pointer" }}>
                         {availableEvents.map((ev) => <option key={ev.id} value={ev.id}>{ev.label}</option>)}
                       </select>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>Time / Distance</label>
+                      <label style={{ color: palette.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>Time / Distance</label>
                       <input value={newTime} onChange={(e) => setNewTime(e.target.value)} placeholder="e.g. 10.85"
                         style={{ background: palette.inputBg, border: `1px solid ${palette.inputBorder}`, borderRadius: 10, padding: "10px 14px", color: palette.text, fontSize: 14, width: 140, outline: "none" }} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>Pain (1–5)</label>
+                      <label style={{ color: palette.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em" }}>Pain (1–5)</label>
                       <input type="number" min={1} max={5} value={newPain} onChange={(e) => setNewPain(e.target.value)}
                         style={{ background: palette.inputBg, border: `1px solid ${palette.inputBorder}`, borderRadius: 10, padding: "10px 14px", color: palette.text, fontSize: 14, width: 80, outline: "none" }} />
                     </div>
                     <button type="submit"
-                      style={{ background: "linear-gradient(135deg, #ea580c, #f97316)", border: "none", borderRadius: 10, padding: "10px 24px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+                      style={{ background: "var(--accent)", border: "none", borderRadius: 10, padding: "10px 24px", color: "var(--accent-foreground)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
                       Save Session
                     </button>
                   </form>
@@ -450,7 +708,7 @@ export default function Dashboard() {
             <div style={{ display: "flex", gap: 8 }}>
               {availableEvents.map(ev => (
                 <button key={ev.id} onClick={() => setChartEvent(ev.id)}
-                  style={{ background: chartEvent === ev.id ? "#ea580c" : palette.surfaceAlt, border: "1px solid " + (chartEvent === ev.id ? "#ea580c" : palette.border), borderRadius: 8, padding: "4px 12px", color: chartEvent === ev.id ? "#fff" : palette.text, fontSize: 12, cursor: "pointer" }}>
+                  style={{ background: chartEvent === ev.id ? "var(--accent)" : palette.surfaceAlt, border: "1px solid " + (chartEvent === ev.id ? "var(--accent)" : palette.border), borderRadius: 8, padding: "4px 12px", color: chartEvent === ev.id ? "var(--accent-foreground)" : palette.text, fontSize: 12, cursor: "pointer" }}>
                   {ev.label}
                 </button>
               ))}
@@ -469,8 +727,8 @@ export default function Dashboard() {
         .ascendex-calendar { background: transparent !important; border: none !important; color: ${palette.text} !important; width: 100% !important; }
         .ascendex-calendar .react-calendar__tile { background: transparent !important; color: ${palette.muted} !important; border-radius: 8px !important; }
         .ascendex-calendar .react-calendar__tile:hover { background: ${palette.surfaceAlt} !important; color: ${palette.text} !important; }
-        .ascendex-calendar .react-calendar__tile--active { background: #ea580c !important; color: #fff !important; }
-        .ascendex-calendar .react-calendar__tile--now { border: 1px solid #ea580c !important; color: #f97316 !important; }
+        .ascendex-calendar .react-calendar__tile--active { background: var(--accent) !important; color: var(--accent-foreground) !important; }
+        .ascendex-calendar .react-calendar__tile--now { border: 1px solid var(--accent) !important; color: var(--accent) !important; }
         .ascendex-calendar .react-calendar__navigation button { background: transparent !important; color: ${palette.text} !important; }
         .ascendex-calendar .react-calendar__month-view__weekdays { color: ${palette.muted} !important; font-size: 11px !important; }
       `}</style>

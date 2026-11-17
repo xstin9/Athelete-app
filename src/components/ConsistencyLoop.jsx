@@ -13,7 +13,7 @@ export default function ConsistencyLoop({ current, target }) {
     <div className="flex flex-col items-center">
       <svg height={radius * 2} width={radius * 2}>
         <circle
-          stroke="#e5e7eb"
+          stroke="var(--chart-grid)"
           fill="none"
           strokeWidth={stroke}
           r={normalizedRadius}
@@ -21,7 +21,7 @@ export default function ConsistencyLoop({ current, target }) {
           cy={radius}
         />
         <circle
-          stroke="#f97316"
+          stroke="var(--accent)"
           fill="none"
           strokeWidth={stroke}
           strokeDasharray={circumference + ' ' + circumference}
@@ -36,14 +36,14 @@ export default function ConsistencyLoop({ current, target }) {
           textAnchor="middle"
           dy=".3em"
           fontSize="1.2em"
-          fill="#f97316"
+          fill="var(--accent)"
           fontWeight="bold"
         >
           {current}/{target}
         </text>
       </svg>
-      <div className="flex items-center gap-1 mt-2 text-sm text-gray-700 dark:text-gray-200">
-        <FaBullseye className="text-orange-500" /> Consistency
+      <div className="flex items-center gap-1 mt-2 text-sm" style={{ color: "var(--color-text)" }}>
+        <FaBullseye style={{ color: "var(--accent)" }} /> Consistency
       </div>
     </div>
   );

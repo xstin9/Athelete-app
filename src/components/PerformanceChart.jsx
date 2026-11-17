@@ -89,39 +89,39 @@ function PerformanceChart({ sessions = [] }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <FaArrowUp className="text-orange-500 text-xl" />
-          <div className="text-lg font-bold text-gray-900 dark:text-white">Performance Progress</div>
+          <div className="text-lg font-bold" style={{ color: "var(--color-text)" }}>Performance Progress</div>
         </div>
-        <div className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="text-sm" style={{ color: "var(--color-muted)" }}>
           {improvement > 0 ? (
             <span className="text-green-600 dark:text-green-400 font-semibold">
               ↓ {improvement}s improved ({improvementPercent}%)
             </span>
           ) : (
-            <span className="text-gray-500">{firstVal} → {lastVal}</span>
+            <span style={{ color: "var(--color-muted)" }}>{firstVal} → {lastVal}</span>
           )}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-gray-700 overflow-x-auto">
+      <div className="p-4 rounded-xl border overflow-x-auto" style={{ background: "var(--color-card)", borderColor: "var(--color-border)" }}>
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-full" style={{ minHeight: "400px" }}>
           <defs>
             <linearGradient id="grad-performance" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f97316" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.32" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
             </linearGradient>
           </defs>
 
           {/* Y-Axis */}
-          <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="currentColor" className="text-gray-400 dark:text-gray-600" strokeWidth="2" />
+          <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="var(--chart-axis)" strokeWidth="2" />
 
           {/* X-Axis */}
-          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="currentColor" className="text-gray-400 dark:text-gray-600" strokeWidth="2" />
+          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--chart-axis)" strokeWidth="2" />
 
           {/* Y-Axis Labels */}
           {yLabels.map((label, i) => (
             <g key={`y-${i}`}>
-              <line x1={padding - 6} y1={label.y} x2={padding} y2={label.y} stroke="currentColor" className="text-gray-300 dark:text-gray-700" strokeWidth="1" />
-              <text x={padding - 35} y={label.y + 4} fontSize="12" fill="currentColor" className="text-gray-600 dark:text-gray-400 text-right">
+              <line x1={padding - 6} y1={label.y} x2={padding} y2={label.y} stroke="var(--chart-axis)" strokeWidth="1" />
+              <text x={padding - 35} y={label.y + 4} fontSize="12" fill="var(--color-muted)" textAnchor="end">
                 {label.value}
               </text>
             </g>
@@ -130,8 +130,8 @@ function PerformanceChart({ sessions = [] }) {
           {/* X-Axis Labels */}
           {xLabels.map((label, i) => (
             <g key={`x-${i}`}>
-              <line x1={label.x} y1={height - padding} x2={label.x} y2={height - padding + 6} stroke="currentColor" className="text-gray-300 dark:text-gray-700" strokeWidth="1" />
-              <text x={label.x} y={height - padding + 20} fontSize="12" fill="currentColor" className="text-gray-600 dark:text-gray-400" textAnchor="middle">
+              <line x1={label.x} y1={height - padding} x2={label.x} y2={height - padding + 6} stroke="var(--chart-axis)" strokeWidth="1" />
+              <text x={label.x} y={height - padding + 20} fontSize="12" fill="var(--color-muted)" textAnchor="middle">
                 {label.label}
               </text>
             </g>
@@ -146,8 +146,7 @@ function PerformanceChart({ sessions = [] }) {
                 y1={label.y}
                 x2={width - padding}
                 y2={label.y}
-                stroke="currentColor"
-                className="text-gray-100 dark:text-gray-800"
+                stroke="var(--chart-grid)"
                 strokeWidth="1"
                 strokeDasharray="5,5"
               />
@@ -168,7 +167,7 @@ function PerformanceChart({ sessions = [] }) {
           <motion.path
             d={pathD}
             fill="none"
-            stroke="#f97316"
+            stroke="var(--accent)"
             strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -186,8 +185,8 @@ function PerformanceChart({ sessions = [] }) {
                 cx={p.x}
                 cy={p.y}
                 r={4}
-                fill="white"
-                stroke="#f97316"
+                fill="var(--color-card)"
+                stroke="var(--accent)"
                 strokeWidth="2"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -198,7 +197,7 @@ function PerformanceChart({ sessions = [] }) {
                 cy={p.y}
                 r={6}
                 fill="none"
-                stroke="#f97316"
+                stroke="var(--accent)"
                 strokeWidth="1"
                 opacity="0.3"
                 initial={{ scale: 0 }}
@@ -209,31 +208,31 @@ function PerformanceChart({ sessions = [] }) {
           ))}
 
           {/* Y-Axis Label */}
-          <text x="15" y="25" fontSize="12" fill="currentColor" className="text-gray-600 dark:text-gray-400">
+          <text x="15" y="25" fontSize="12" fill="var(--color-muted)">
             Time (s)
           </text>
 
           {/* X-Axis Label */}
-          <text x={width - 60} y={height - 10} fontSize="12" fill="currentColor" className="text-gray-600 dark:text-gray-400">
+          <text x={width - 60} y={height - 10} fontSize="12" fill="var(--color-muted)">
             Timeline
           </text>
         </svg>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-gray-600 dark:text-gray-400">Start</div>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">{firstVal}s</div>
+        <div className="p-3 rounded-lg border" style={{ background: "var(--color-card-alt)", borderColor: "var(--color-border)" }}>
+          <div className="text-xs" style={{ color: "var(--color-muted)" }}>Start</div>
+          <div className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{firstVal}s</div>
         </div>
-        <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg border border-orange-200 dark:border-orange-700">
-          <div className="text-xs text-orange-600 dark:text-orange-400 font-semibold">Improvement</div>
-          <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+        <div className="p-3 rounded-lg border" style={{ background: "var(--color-card-alt)", borderColor: "var(--color-border)" }}>
+          <div className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Improvement</div>
+          <div className="text-lg font-bold" style={{ color: "var(--accent)" }}>
             {improvement > 0 ? `↓${improvement}s` : "→"}
           </div>
         </div>
-        <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-xs text-gray-600 dark:text-gray-400">Current</div>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">{lastVal}s</div>
+        <div className="p-3 rounded-lg border" style={{ background: "var(--color-card-alt)", borderColor: "var(--color-border)" }}>
+          <div className="text-xs" style={{ color: "var(--color-muted)" }}>Current</div>
+          <div className="text-lg font-bold" style={{ color: "var(--color-text)" }}>{lastVal}s</div>
         </div>
       </div>
     </div>
